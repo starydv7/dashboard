@@ -10,21 +10,16 @@ import {
   InfrastructureChart 
 } from '../components/HealthcareCharts'
 import { PieChartComponent, BarChartComponent } from '../components/Chart'
+import { DashboardHeader } from '../components/Navigation'
 
 export default function HealthcareChartsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Healthcare Analytics Dashboard</h1>
-              <p className="text-sm text-gray-600">Comprehensive Health Indicators for Government Officials</p>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Navigation Header */}
+      <DashboardHeader 
+        title="Healthcare Analytics Dashboard" 
+        subtitle="Comprehensive Health Indicators for Government Officials"
+      />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">

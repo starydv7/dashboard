@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { LineChartComponent, BarChartComponent, PieChartComponent } from '../components/Chart'
 import GaugeChart from '../components/GaugeChart'
-import { Home, Info, Search, LogOut, MapPin, User, Target, TrendingUp, CheckCircle } from 'lucide-react'
+import { Home, Info, Search, MapPin, User, Target, TrendingUp, CheckCircle } from 'lucide-react'
+import { DashboardHeader } from '../components/Navigation'
 
 export default function ASHADashboard() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -84,11 +85,6 @@ export default function ASHADashboard() {
     wantToLearnMore: "Percentage of individuals who want to learn more about antibiotic use."
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem('userRole')
-    localStorage.removeItem('userLocation')
-    router.push('/login')
-  }
 
   const getCurrentData = () => {
     return timeRange === 'week' ? ashaData.weeklyData : ashaData.weeklyData
@@ -96,29 +92,11 @@ export default function ASHADashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">ASHA Dashboard</h1>
-              <p className="text-sm text-gray-600">Individual ASHA Performance & Community Health Metrics</p>
-            </div>
-                         <div className="flex items-center space-x-4">
-               <div className="text-sm text-gray-500">
-                 Last updated: {currentDate}
-               </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Logout</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Navigation Header */}
+      <DashboardHeader 
+        title="ASHA Dashboard" 
+        subtitle="Individual ASHA Performance & Community Health Metrics"
+      />
 
       {/* ASHA Profile */}
       <div className="bg-white border-b border-gray-200">

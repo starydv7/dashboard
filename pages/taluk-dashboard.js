@@ -14,7 +14,8 @@ import {
   SeasonalHealthChart, 
   InfrastructureChart 
 } from '../components/HealthcareCharts'
-import { Calendar, Users, Home, Activity, Info, Search, Filter, LogOut, MapPin, Building, User, ChevronDown, ChevronRight } from 'lucide-react'
+import { Calendar, Users, Home, Activity, Info, Search, Filter, MapPin, Building, User, ChevronDown, ChevronRight } from 'lucide-react'
+import { DashboardHeader } from '../components/Navigation'
 
 export default function TalukDashboard() {
   const [selectedTaluk, setSelectedTaluk] = useState('')
@@ -58,11 +59,6 @@ export default function TalukDashboard() {
     wantToLearnMore: "Percentage of individuals who want to learn more about antibiotic use."
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem('userRole')
-    localStorage.removeItem('userLocation')
-    router.push('/login')
-  }
 
   const togglePHCExpansion = (phcId) => {
     setExpandedPHCs(prev => ({
@@ -90,29 +86,11 @@ export default function TalukDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Taluk Level Dashboard</h1>
-              <p className="text-sm text-gray-600">Dharwad District - Taluk-wise Analysis</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-500">
-                Last updated: {formatDate(new Date())}
-              </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Logout</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Navigation Header */}
+      <DashboardHeader 
+        title="Taluk Dashboard" 
+        subtitle="Taluk-level health metrics and PHC data"
+      />
 
       {/* Taluk Selection */}
       <div className="bg-white border-b border-gray-200">

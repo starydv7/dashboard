@@ -14,7 +14,8 @@ import {
   SeasonalHealthChart, 
   InfrastructureChart 
 } from '../components/HealthcareCharts'
-import { Calendar, Users, Home, Activity, Info, Search, Filter, LogOut, MapPin } from 'lucide-react'
+import { Calendar, Users, Home, Activity, Info, Search, Filter, MapPin } from 'lucide-react'
+import { DashboardHeader } from '../components/Navigation'
 
 export default function DistrictDashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState('current')
@@ -145,11 +146,6 @@ export default function DistrictDashboard() {
     healthInfoSources: "Shows the network trends of health information sources over time. The line chart displays how people's preferences for getting health information change monthly across ASHA Workers, Lab Assistant, Hospital PHC, and Personal sources. Source: Q3"
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem('userRole')
-    localStorage.removeItem('userLocation')
-    router.push('/login')
-  }
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-IN', {
@@ -163,29 +159,11 @@ export default function DistrictDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">District Level Dashboard</h1>
-              <p className="text-sm text-gray-600">Multi-District Health Indicators Overview</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-500">
-                Last updated: {formatDate(districtData.districts.Dharwad?.lastUpdated || new Date())}
-              </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Logout</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Navigation Header */}
+      <DashboardHeader 
+        title="District Dashboard" 
+        subtitle="District-level health indicators and data"
+      />
 
       {/* Search and Filter Section */}
       <div className="bg-white border-b border-gray-200">

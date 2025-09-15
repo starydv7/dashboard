@@ -14,6 +14,7 @@ import {
   InfrastructureChart 
 } from '../components/HealthcareCharts'
 import { Calendar, Users, Home, Activity, Info, AlertTriangle, TrendingUp, TrendingDown, Shield, Heart, Building, MapPin, FileText, BarChart3, Search, Filter } from 'lucide-react'
+import { DashboardHeader } from '../components/Navigation'
 
 export default function Dashboard() {
   const [selectedDistrict, setSelectedDistrict] = useState('Dharwad')
@@ -100,6 +101,12 @@ export default function Dashboard() {
           </div>
         </div>
       </header>
+
+      {/* Navigation Header */}
+      <DashboardHeader 
+        title="Main Dashboard" 
+        subtitle="Overview of all districts and health metrics"
+      />
 
       {/* Selection Controls */}
       <div className="bg-white shadow-sm border-b border-gray-200">
