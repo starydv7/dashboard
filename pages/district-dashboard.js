@@ -14,7 +14,7 @@ import {
   SeasonalHealthChart, 
   InfrastructureChart 
 } from '../components/HealthcareCharts'
-import { Calendar, Users, Home, Activity, Info, Search, Filter, MapPin } from 'lucide-react'
+import { Calendar, Users, Home, Activity, Info, Search, Filter, MapPin, LogOut } from 'lucide-react'
 import { DashboardHeader } from '../components/Navigation'
 
 export default function DistrictDashboard() {
@@ -24,6 +24,21 @@ export default function DistrictDashboard() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterTaluk, setFilterTaluk] = useState('all')
   const router = useRouter()
+
+  // Access control: Only DLO can access District Dashboard
+  useEffect(() => {
+    const userRole = localStorage.getItem('userRole')
+    if (userRole && userRole.toUpperCase() !== 'DLO') {
+      alert('Access Denied: Only DLO users can access District Dashboard')
+      if (userRole.toUpperCase() === 'ASHA') {
+        router.push('/asha-dashboard')
+      } else if (userRole.toUpperCase() === 'PHC') {
+        router.push('/taluk-dashboard')
+      } else {
+        router.push('/login')
+      }
+    }
+  }, [router])
 
   // Get filtered data based on selection
   const getFilteredDistricts = () => {
@@ -146,6 +161,15 @@ export default function DistrictDashboard() {
     healthInfoSources: "Shows the network trends of health information sources over time. The line chart displays how people's preferences for getting health information change monthly across ASHA Workers, Lab Assistant, Hospital PHC, and Personal sources. Source: Q3"
   }
 
+  const handleLogout = () => {
+    // Clear all stored data
+    localStorage.removeItem('userRole')
+    localStorage.removeItem('userData')
+    localStorage.removeItem('accessToken')
+    
+    // Redirect to login page
+    router.push('/login')
+  }
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-IN', {
@@ -700,11 +724,23 @@ export default function DistrictDashboard() {
                      />
              </div>
            </div>
-                 </div>
+                </div>
 
-         
-
-         
+        {/* Logout Button */}
+        <div className="mb-8">
+          <div className="card">
+            <div className="flex flex-col items-center justify-center py-6">
+              <p className="text-gray-600 mb-4">Ready to end your session?</p>
+              <button
+                onClick={handleLogout}
+                className="flex items-center space-x-2 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+              >
+                <LogOut className="w-5 h-5" />
+                <span className="font-medium">Logout</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </main>
     </div>
   )

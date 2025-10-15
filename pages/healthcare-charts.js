@@ -1,3 +1,4 @@
+import { useRouter } from 'next/router'
 import { healthcareData } from '../data/healthcareData'
 import { 
   EpidemiologicalTrendChart, 
@@ -11,8 +12,21 @@ import {
 } from '../components/HealthcareCharts'
 import { PieChartComponent, BarChartComponent } from '../components/Chart'
 import { DashboardHeader } from '../components/Navigation'
+import { LogOut } from 'lucide-react'
 
 export default function HealthcareChartsPage() {
+  const router = useRouter()
+
+  const handleLogout = () => {
+    // Clear all stored data
+    localStorage.removeItem('userRole')
+    localStorage.removeItem('userData')
+    localStorage.removeItem('accessToken')
+    
+    // Redirect to login page
+    router.push('/login')
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navigation Header */}
@@ -151,6 +165,22 @@ export default function HealthcareChartsPage() {
             <h3 className="text-sm font-medium text-gray-600">Patient Satisfaction</h3>
             <div className="metric-value">82.3%</div>
             <p className="text-xs text-gray-500 mt-1">Survey results</p>
+          </div>
+        </div>
+
+        {/* Logout Button */}
+        <div className="mt-8">
+          <div className="card">
+            <div className="flex flex-col items-center justify-center py-6">
+              <p className="text-gray-600 mb-4">Ready to end your session?</p>
+              <button
+                onClick={handleLogout}
+                className="flex items-center space-x-2 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+              >
+                <LogOut className="w-5 h-5" />
+                <span className="font-medium">Logout</span>
+              </button>
+            </div>
           </div>
         </div>
 

@@ -1,39 +1,207 @@
 import { useState } from 'react'
 import { useRouter } from 'next/router'
-import { Eye, EyeOff, Building, User, MapPin, Users } from 'lucide-react'
+import { Eye, EyeOff, Building, User, MapPin, Users, Phone } from 'lucide-react'
+import apiService from '../services/api'
 
 export default function Login() {
-  const [formData, setFormData] = useState({
-    username: '',
-    password: '',
-    role: 'asha',
-    district: '',
-    taluk: '',
-    phc: ''
-  })
-  const [showPassword, setShowPassword] = useState(false)
+  const [phoneNumber, setPhoneNumber] = useState('')
+  const [otp, setOtp] = useState('')
+  const [otpSent, setOtpSent] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+  const [testingConnection, setTestingConnection] = useState(false)
+  const [fetchedOTP, setFetchedOTP] = useState('')
+  const [showFetchedOTP, setShowFetchedOTP] = useState(false)
   const router = useRouter()
 
-  const handleSubmit = (e) => {
+  const handleSendOTP = async (e) => {
     e.preventDefault()
-    // Store user role and location data
-    localStorage.setItem('userRole', formData.role)
-    localStorage.setItem('userLocation', JSON.stringify({
-      district: formData.district,
-      taluk: formData.taluk,
-      phc: formData.phc
-    }))
+    setError('')
+    setSuccess('')
     
-    // Redirect based on role
-    router.push(`/${formData.role}-dashboard`)
+    // Client-side validation
+    if (!phoneNumber || phoneNumber.trim() === '') {
+      setError('Please enter your phone number')
+      return
+    }
+    
+    setLoading(true)
+
+    try {
+      console.log('📱 Sending OTP to phone number:', phoneNumber)
+      const response = await apiService.sendOTP(phoneNumber)
+      console.log('✅ OTP sent successfully:', response)
+      
+      setOtpSent(true)
+      setSuccess('OTP sent successfully! Please check your phone.')
+      
+      // Fetch the OTP that was just generated
+      setTimeout(async () => {
+        try {
+          console.log('🔍 Fetching generated OTP...')
+          const otpResponse = await apiService.getOTP(phoneNumber)
+          console.log('📱 Fetched OTP:', otpResponse)
+          
+          if (otpResponse.success && otpResponse.data && otpResponse.data.length > 0) {
+            const otpCode = otpResponse.data[0].otp_code
+            setFetchedOTP(otpCode)
+            setShowFetchedOTP(true)
+            console.log('✅ OTP fetched and displayed:', otpCode)
+          }
+        } catch (otpErr) {
+          console.error('❌ Error fetching OTP:', otpErr)
+          // Don't show error to user, just log it
+        }
+      }, 1000) // Wait 1 second after OTP is sent
+      
+    } catch (err) {
+      console.error('❌ Error sending OTP:', err)
+      setError(err.message || 'Failed to send OTP. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const roleOptions = [
-    { value: 'asha', label: 'ASHA Worker', icon: User },
-    { value: 'medical-officer', label: 'Medical Officer (PHC)', icon: Building },
-    { value: 'taluk', label: 'Taluk Administrator', icon: MapPin },
-    { value: 'district', label: 'District Administrator', icon: Users }
-  ]
+  const handleLogin = async (e) => {
+    e.preventDefault()
+    setError('')
+    setSuccess('')
+    
+    // Client-side validation
+    if (!phoneNumber || phoneNumber.trim() === '') {
+      setError('Phone number is required')
+      return
+    }
+    
+    if (!otp || otp.trim() === '') {
+      setError('OTP is required')
+      return
+    }
+    
+    setLoading(true)
+
+    try {
+      console.log('🔐 Attempting login with OTP...')
+      const response = await apiService.loginWithOTP(phoneNumber, otp)
+      console.log('✅ Login successful:', response)
+      
+      if (response.success && response.userExists) {
+        setSuccess('Login successful! Redirecting...')
+        
+        // Debug: Log EVERYTHING to find the role
+        console.log('=' .repeat(60))
+        console.log('🔍 DEBUGGING LOGIN RESPONSE')
+        console.log('=' .repeat(60))
+        console.log('Full response:', JSON.stringify(response, null, 2))
+        console.log('User object:', JSON.stringify(response.user, null, 2))
+        console.log('=' .repeat(60))
+        
+        // Try ALL possible ways to get the role
+        const possibleRoles = {
+          'response.user.role': response.user?.role,
+          'response.user.user_type': response.user?.user_type,
+          'response.user.userType': response.user?.userType,
+          'response.user.Role': response.user?.Role,
+          'response.user.USER_TYPE': response.user?.USER_TYPE,
+          'response.user.type': response.user?.type,
+          'response.user.designation': response.user?.designation,
+          'response.role': response.role,
+          'response.userRole': response.userRole,
+        }
+        
+        console.log('🔎 Checking all possible role fields:', possibleRoles)
+        
+        // Get the first non-null/non-undefined role
+        let userRole = null
+        for (const [key, value] of Object.entries(possibleRoles)) {
+          if (value) {
+            console.log(`✅ Found role in ${key}: "${value}"`)
+            userRole = value
+            break
+          }
+        }
+        
+        // If still no role found, use default
+        if (!userRole) {
+          console.log('⚠️ NO ROLE FOUND! Using default: asha')
+          userRole = 'asha'
+        }
+        
+        console.log('📝 Final selected role:', userRole)
+        
+        // Store user data
+        localStorage.setItem('userRole', userRole)
+        localStorage.setItem('userData', JSON.stringify(response.user))
+        
+        // Route based on role (case-insensitive comparison)
+        setTimeout(() => {
+          const roleUpper = String(userRole).toUpperCase().trim()
+          console.log('🔀 Normalized role for routing:', roleUpper)
+          
+          let targetRoute = '/asha-dashboard' // default
+          
+          if (roleUpper === 'ASHA') {
+            targetRoute = '/asha-dashboard'
+            console.log('➡️ Route decision: ASHA → /asha-dashboard')
+          } else if (roleUpper === 'DLO') {
+            targetRoute = '/district-dashboard'
+            console.log('➡️ Route decision: DLO → /district-dashboard')
+          } else if (roleUpper === 'PHC') {
+            targetRoute = '/taluk-dashboard'
+            console.log('➡️ Route decision: PHC → /taluk-dashboard')
+          } else {
+            console.log(`⚠️ Unknown role "${roleUpper}", defaulting to /asha-dashboard`)
+          }
+          
+          console.log('🚀 Redirecting to:', targetRoute)
+          console.log('=' .repeat(60))
+          router.push(targetRoute)
+        }, 1000)
+      } else if (response.success && !response.userExists) {
+        setError('User not found in system. Please contact administrator.')
+      } else {
+        setError(response.message || 'Login failed. Please try again.')
+      }
+    } catch (err) {
+      console.error('❌ Error logging in:', err)
+      setError(err.message || 'Invalid OTP. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const testConnection = async () => {
+    setTestingConnection(true)
+    setError('')
+    setSuccess('')
+    
+    try {
+      console.log('🔍 Testing connection to server...')
+      const response = await fetch('http://192.168.3.74:3000/api/v1/auth/send-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ phoneNumber: '1234567890' })
+      })
+      
+      const data = await response.json()
+      console.log('📡 Connection test response:', response.status, response.statusText)
+      console.log('📦 Response data:', data)
+      
+      if (response.ok) {
+        setSuccess('✅ Server connection successful! API is working.')
+      } else {
+        setError(`❌ Server responded with: ${response.status} ${response.statusText}`)
+      }
+    } catch (err) {
+      console.error('❌ Connection test failed:', err)
+      setError(`❌ Cannot connect to server: ${err.message}`)
+    } finally {
+      setTestingConnection(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -47,152 +215,131 @@ export default function Login() {
           </p>
         </div>
         
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form className="mt-8 space-y-6" onSubmit={otpSent ? handleLogin : handleSendOTP}>
           <div className="space-y-4">
-            {/* Username */}
+            {/* Phone Number */}
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                Username
-              </label>
-              <input
-                id="username"
-                name="username"
-                type="text"
-                required
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Enter your username"
-                value={formData.username}
-                onChange={(e) => setFormData({...formData, username: e.target.value})}
-              />
-            </div>
-
-            {/* Password */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
+              <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700">
+                Phone Number
               </label>
               <div className="mt-1 relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Phone className="h-5 w-5 text-gray-400" />
+                </div>
                 <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
+                  id="phoneNumber"
+                  name="phoneNumber"
+                  type="tel"
                   required
-                  className="appearance-none relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                  placeholder="Enter your password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({...formData, password: e.target.value})}
+                  disabled={otpSent}
+                  className="appearance-none relative block w-full pl-10 px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm disabled:bg-gray-100"
+                  placeholder="Enter your phone number"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
                 />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400" />
-                  )}
-                </button>
               </div>
             </div>
 
-            {/* Role Selection */}
-            <div>
-              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                Role
-              </label>
-              <select
-                id="role"
-                name="role"
-                required
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                value={formData.role}
-                onChange={(e) => setFormData({...formData, role: e.target.value})}
-              >
-                {roleOptions.map((role) => {
-                  const Icon = role.icon
-                  return (
-                    <option key={role.value} value={role.value}>
-                      {role.label}
-                    </option>
-                  )
-                })}
-              </select>
-            </div>
-
-            {/* Location Fields - Show based on role */}
-            {formData.role !== 'asha' && (
-              <>
-                <div>
-                  <label htmlFor="district" className="block text-sm font-medium text-gray-700">
-                    District
-                  </label>
-                  <select
-                    id="district"
-                    name="district"
-                    required
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                    value={formData.district}
-                    onChange={(e) => setFormData({...formData, district: e.target.value})}
+            {/* OTP Input - Only show after OTP is sent */}
+            {otpSent && (
+              <div>
+                <label htmlFor="otp" className="block text-sm font-medium text-gray-700">
+                  OTP
+                </label>
+                
+                {/* Show fetched OTP if available */}
+                {showFetchedOTP && fetchedOTP && (
+                  <div className="mb-2 p-3 bg-green-50 border border-green-200 rounded-md">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm font-medium text-green-800">
+                          Generated OTP: <span className="font-mono text-lg font-bold">{fetchedOTP}</span>
+                        </p>
+                        <p className="text-xs text-green-600 mt-1">
+                          You can copy this OTP or wait for SMS
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <input
+                  id="otp"
+                  name="otp"
+                  type="text"
+                  required
+                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                  placeholder="Enter OTP"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  maxLength={6}
+                />
+                
+                {/* Auto-fill button if OTP is fetched */}
+                {showFetchedOTP && fetchedOTP && (
+                  <button
+                    type="button"
+                    onClick={() => setOtp(fetchedOTP)}
+                    className="mt-2 text-sm text-blue-600 hover:text-blue-800 underline"
                   >
-                    <option value="">Select District</option>
-                    <option value="district1">District 1</option>
-                    <option value="district2">District 2</option>
-                    <option value="district3">District 3</option>
-                  </select>
-                </div>
-
-                {formData.role !== 'district' && (
-                  <div>
-                    <label htmlFor="taluk" className="block text-sm font-medium text-gray-700">
-                      Taluk
-                    </label>
-                    <select
-                      id="taluk"
-                      name="taluk"
-                      required
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                      value={formData.taluk}
-                      onChange={(e) => setFormData({...formData, taluk: e.target.value})}
-                    >
-                      <option value="">Select Taluk</option>
-                      <option value="taluk1">Taluk 1</option>
-                      <option value="taluk2">Taluk 2</option>
-                      <option value="taluk3">Taluk 3</option>
-                    </select>
-                  </div>
+                    Use generated OTP: {fetchedOTP}
+                  </button>
                 )}
-
-                {formData.role === 'medical-officer' && (
-                  <div>
-                    <label htmlFor="phc" className="block text-sm font-medium text-gray-700">
-                      PHC
-                    </label>
-                    <select
-                      id="phc"
-                      name="phc"
-                      required
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                      value={formData.phc}
-                      onChange={(e) => setFormData({...formData, phc: e.target.value})}
-                    >
-                      <option value="">Select PHC</option>
-                      <option value="phc1">PHC 1</option>
-                      <option value="phc2">PHC 2</option>
-                      <option value="phc3">PHC 3</option>
-                    </select>
-                  </div>
-                )}
-              </>
+              </div>
             )}
           </div>
 
-          <div>
+          {/* Error Message */}
+          {error && (
+            <div className="rounded-md bg-red-50 p-4">
+              <div className="text-sm text-red-700">{error}</div>
+            </div>
+          )}
+
+          {/* Success Message */}
+          {success && (
+            <div className="rounded-md bg-green-50 p-4">
+              <div className="text-sm text-green-700">{success}</div>
+            </div>
+          )}
+
+          <div className="space-y-3">
             <button
               type="submit"
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              disabled={loading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              Sign in
+              {loading ? 'Please wait...' : (otpSent ? 'Login' : 'Send OTP')}
+            </button>
+
+            {otpSent && (
+              <button
+                type="button"
+                onClick={() => {
+                  setOtpSent(false)
+                  setOtp('')
+                  setError('')
+                  setSuccess('')
+                }}
+                className="w-full text-sm text-blue-600 hover:text-blue-800"
+              >
+                Change phone number
+              </button>
+            )}
+
+            {/* Test Connection Button */}
+            <button
+              type="button"
+              onClick={testConnection}
+              disabled={testingConnection}
+              className="w-full text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded px-3 py-2 disabled:opacity-50"
+            >
+              {testingConnection ? 'Testing...' : 'Test Server Connection'}
             </button>
           </div>
         </form>

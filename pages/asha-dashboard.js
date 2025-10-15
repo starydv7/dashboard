@@ -2,15 +2,33 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { LineChartComponent, BarChartComponent, PieChartComponent } from '../components/Chart'
 import GaugeChart from '../components/GaugeChart'
-import { Home, Info, Search, MapPin, User, Target, TrendingUp, CheckCircle } from 'lucide-react'
+import { Home, Info, Search, MapPin, User, Target, TrendingUp, CheckCircle, LogOut } from 'lucide-react'
 import { DashboardHeader } from '../components/Navigation'
+import apiService from '../services/api'
 
 export default function ASHADashboard() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showDescription, setShowDescription] = useState(null)
   const [timeRange, setTimeRange] = useState('week')
   const [currentDate, setCurrentDate] = useState('')
+  const [apiData, setApiData] = useState(null)
+  const [loading, setLoading] = useState(true)
   const router = useRouter()
+
+  // Access control: Only ASHA can access ASHA Dashboard
+  useEffect(() => {
+    const userRole = localStorage.getItem('userRole')
+    if (userRole && userRole.toUpperCase() !== 'ASHA') {
+      alert('Access Denied: Only ASHA users can access ASHA Dashboard')
+      if (userRole.toUpperCase() === 'DLO') {
+        router.push('/district-dashboard')
+      } else if (userRole.toUpperCase() === 'PHC') {
+        router.push('/taluk-dashboard')
+      } else {
+        router.push('/login')
+      }
+    }
+  }, [router])
 
   useEffect(() => {
     setCurrentDate(new Date().toLocaleDateString('en-US', { 
@@ -18,7 +36,51 @@ export default function ASHADashboard() {
       month: 'short', 
       day: 'numeric' 
     }))
+
+    // Fetch API data when component mounts
+    fetchDashboardData()
   }, [])
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true)
+      console.log('🚀 Fetching ASHA Dashboard Data...')
+      console.log('='.repeat(60))
+      
+      const data = await apiService.fetchAllAshaDashboardData()
+      
+      console.log('='.repeat(60))
+      console.log('📊 FINAL DASHBOARD DATA:')
+      console.log('Households Completed:', data.householdsCompleted)
+      console.log('Households Sickness:', data.householdsSickness)
+      console.log('Completed Courses:', data.completedCourses)
+      console.log('Medicine Self:', data.medicineSelf)
+      console.log('Want Info:', data.wantInfo)
+      console.log('Symptom Categories:', data.symptomCategories)
+      console.log('='.repeat(60))
+      
+      // Log symptoms data in detail for analysis
+      if (data.symptomCategories) {
+        console.log('🤒 SYMPTOMS DATA ANALYSIS:')
+        console.log('Total symptoms:', data.symptomCategories.length || 'No data')
+        console.log('Symptoms structure:', data.symptomCategories)
+        console.log('='.repeat(40))
+      }
+      
+      // Log weekly prescriptions data
+      if (data.weeklyPrescriptions) {
+        console.log('📋 WEEKLY PRESCRIPTIONS DATA:')
+        console.log('Prescriptions structure:', data.weeklyPrescriptions)
+        console.log('='.repeat(40))
+      }
+      
+      setApiData(data)
+    } catch (error) {
+      console.error('❌ Error fetching dashboard data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // Mock ASHA data
   const ashaData = {
@@ -90,6 +152,116 @@ export default function ASHADashboard() {
     return timeRange === 'week' ? ashaData.weeklyData : ashaData.weeklyData
   }
 
+  const handleLogout = () => {
+    // Clear all stored data
+    localStorage.removeItem('userRole')
+    localStorage.removeItem('userData')
+    localStorage.removeItem('accessToken')
+    
+    // Redirect to login page
+    router.push('/login')
+  }
+
+  // Get symptoms data from API or use hardcoded
+  const getSymptomsData = () => {
+    if (apiData && apiData.symptomCategories && apiData.symptomCategories.Data) {
+      // Transform API data to match our chart format
+      const symptomsArray = apiData.symptomCategories.Data.map(item => ({
+        name: item.symptom,
+        count: parseInt(item.symptom_count) || 0,
+        percentage: 0 // We can calculate this if needed
+      }))
+      
+      // Calculate total for percentages
+      const totalCount = symptomsArray.reduce((sum, item) => sum + item.count, 0)
+      
+      // Add percentages
+      return symptomsArray.map(item => ({
+        ...item,
+        percentage: totalCount > 0 ? ((item.count / totalCount) * 100).toFixed(1) : 0
+      }))
+    }
+    
+    // Fallback to hardcoded symptoms
+    return ashaData.symptomsData
+  }
+
+  // Get real household data from API or use defaults
+  const getHouseholdData = () => {
+    // Use hardcoded values for total and assigned
+    const totalHouseholds = ashaData.totalHouseholds
+    const assignedHouseholds = ashaData.assignedHouseholds
+    
+    // Only completedHouseholds comes from API
+    let completedHouseholds = ashaData.completedHouseholds
+    let householdsWithSickness = getCurrentData().householdsWithSickness
+    let fullCourseCompleted = getCurrentData().fullCourseCompleted
+    let individualsDataCollected = getCurrentData().individualsDataCollected
+    let antibioticsFromPharmacy = getCurrentData().antibioticsFromPharmacy
+    let wantToLearnMore = getCurrentData().wantToLearnMore
+    let prescriptionsScanned = getCurrentData().prescriptionsScanned
+    
+    if (apiData && apiData.householdsCompleted && apiData.householdsCompleted.success) {
+      const householdVisited = parseInt(apiData.householdsCompleted.data.total_household_visited) || 0
+      completedHouseholds = householdVisited
+    }
+    
+    // Get households with sickness from API
+    if (apiData && apiData.householdsSickness && apiData.householdsSickness.success) {
+      const sicknessCount = parseInt(apiData.householdsSickness.data.total_household_with_sickness) || 0
+      householdsWithSickness = sicknessCount
+    }
+    
+    // Get completed courses from API
+    if (apiData && apiData.completedCourses && apiData.completedCourses.success) {
+      const completedCount = parseInt(apiData.completedCourses.data.total_individual_completed_course) || 0
+      fullCourseCompleted = completedCount
+    }
+    
+    // Get self-medication from API
+    if (apiData && apiData.medicineSelf && apiData.medicineSelf.success) {
+      const selfMedCount = parseInt(apiData.medicineSelf.data.total_self_medicine) || 0
+      antibioticsFromPharmacy = selfMedCount
+    }
+    
+    // Get want info from API
+    if (apiData && apiData.wantInfo && apiData.wantInfo.success) {
+      const wantInfoCount = parseInt(apiData.wantInfo.data.total_info_wants) || 0
+      wantToLearnMore = wantInfoCount
+    }
+    
+    // Get weekly prescriptions scanned from API
+    if (apiData && apiData.weeklyPrescriptions && apiData.weeklyPrescriptions.success) {
+      // Handle different possible data formats
+      if (apiData.weeklyPrescriptions.data) {
+        if (typeof apiData.weeklyPrescriptions.data.total_prescriptions_scanned !== 'undefined') {
+          prescriptionsScanned = parseInt(apiData.weeklyPrescriptions.data.total_prescriptions_scanned) || 0
+        } else if (typeof apiData.weeklyPrescriptions.data.total !== 'undefined') {
+          prescriptionsScanned = parseInt(apiData.weeklyPrescriptions.data.total) || 0
+        } else if (Array.isArray(apiData.weeklyPrescriptions.data)) {
+          // If it's an array, sum up the values
+          prescriptionsScanned = apiData.weeklyPrescriptions.data.reduce((sum, item) => sum + (parseInt(item.count) || 0), 0)
+        }
+      }
+    }
+    
+    return {
+      totalHouseholds: totalHouseholds,
+      assignedHouseholds: assignedHouseholds,
+      completedHouseholds: completedHouseholds,
+      householdsVisited: completedHouseholds,
+      householdsWithSickness: householdsWithSickness,
+      fullCourseCompleted: fullCourseCompleted,
+      individualsDataCollected: individualsDataCollected,
+      antibioticsFromPharmacy: antibioticsFromPharmacy,
+      wantToLearnMore: wantToLearnMore,
+      prescriptionsScanned: prescriptionsScanned
+    }
+  }
+
+  const householdData = getHouseholdData()
+  const symptomsData = getSymptomsData()
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navigation Header */}
@@ -125,7 +297,7 @@ export default function ASHADashboard() {
               <Home className="w-8 h-8 text-blue-600 mr-3" />
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Households</p>
-                <p className="metric-value">{ashaData.totalHouseholds}</p>
+                <p className="metric-value">{loading ? '...' : householdData.totalHouseholds}</p>
               </div>
             </div>
           </div>
@@ -134,7 +306,7 @@ export default function ASHADashboard() {
               <Target className="w-8 h-8 text-green-600 mr-3" />
               <div>
                 <p className="text-sm font-medium text-gray-600">Assigned Households</p>
-                <p className="metric-value">{ashaData.assignedHouseholds}</p>
+                <p className="metric-value">{loading ? '...' : householdData.assignedHouseholds}</p>
               </div>
             </div>
           </div>
@@ -143,7 +315,7 @@ export default function ASHADashboard() {
               <CheckCircle className="w-8 h-8 text-purple-600 mr-3" />
               <div>
                 <p className="text-sm font-medium text-gray-600">Completed Households</p>
-                <p className="metric-value">{ashaData.completedHouseholds}</p>
+                <p className="metric-value">{loading ? '...' : householdData.completedHouseholds}</p>
               </div>
             </div>
           </div>
@@ -152,7 +324,11 @@ export default function ASHADashboard() {
               <TrendingUp className="w-8 h-8 text-orange-600 mr-3" />
               <div>
                 <p className="text-sm font-medium text-gray-600">Coverage Rate</p>
-                <p className="metric-value">{((ashaData.completedHouseholds / ashaData.assignedHouseholds) * 100).toFixed(1)}%</p>
+                <p className="metric-value">
+                  {loading ? '...' : householdData.assignedHouseholds > 0 
+                    ? `${((householdData.completedHouseholds / householdData.assignedHouseholds) * 100).toFixed(1)}%`
+                    : '0%'}
+                </p>
               </div>
             </div>
           </div>
@@ -185,15 +361,15 @@ export default function ASHADashboard() {
                </div>
                <BarChartComponent 
                  data={[
-                   { name: 'Visited This Week', value: getCurrentData().householdsVisited, color: '#3b82f6' },
-                   { name: 'Total Assigned', value: ashaData.assignedHouseholds, color: '#6b7280' }
+                   { name: 'Visited This Week', value: householdData.householdsVisited, color: '#3b82f6' },
+                   { name: 'Total Assigned', value: householdData.assignedHouseholds, color: '#6b7280' }
                  ]} 
                  dataKey="value" 
                  fill="#3b82f6"
                />
                <div className="text-center mt-2">
                  <span className="text-sm text-gray-600">
-                   {getCurrentData().householdsVisited} of {ashaData.assignedHouseholds} households
+                   {loading ? 'Loading...' : `${householdData.householdsVisited} of ${householdData.assignedHouseholds} households`}
                  </span>
                </div>
              </div>
@@ -293,15 +469,17 @@ export default function ASHADashboard() {
               </div>
               <BarChartComponent 
                 data={[
-                  { name: 'Completed', value: getCurrentData().householdsVisited, color: '#10b981' },
-                  { name: 'Remaining', value: ashaData.assignedHouseholds - getCurrentData().householdsVisited, color: '#e5e7eb' }
+                  { name: 'Completed', value: householdData.completedHouseholds, color: '#10b981' },
+                  { name: 'Remaining', value: householdData.assignedHouseholds - householdData.completedHouseholds, color: '#e5e7eb' }
                 ]} 
                 dataKey="value" 
                 fill="#10b981"
               />
               <div className="text-center mt-2">
                 <span className="text-sm text-gray-600">
-                  {((getCurrentData().householdsVisited / ashaData.assignedHouseholds) * 100).toFixed(1)}% coverage achieved
+                  {loading ? 'Loading...' : householdData.assignedHouseholds > 0 
+                    ? `${((householdData.completedHouseholds / householdData.assignedHouseholds) * 100).toFixed(1)}% coverage achieved`
+                    : '0% coverage achieved'}
                 </span>
               </div>
             </div>
@@ -329,7 +507,7 @@ export default function ASHADashboard() {
                 </div>
               </div>
                                                            <BarChartComponent 
-                 data={ashaData.symptomsData.map(symptom => ({
+                 data={symptomsData.map(symptom => ({
                    name: symptom.name,
                    value: symptom.count,
                    color: symptom.name === 'Fever (>38.3°C or >101°F)' ? '#ef4444' : 
@@ -366,7 +544,7 @@ export default function ASHADashboard() {
                />
                <div className="text-center mt-2">
                  <span className="text-sm text-gray-600">
-                   Total: {ashaData.symptomsData.reduce((sum, symptom) => sum + symptom.count, 0)} cases reported
+                   {loading ? 'Loading...' : `Total: ${symptomsData.reduce((sum, symptom) => sum + symptom.count, 0)} cases reported`}
                  </span>
                </div>
             </div>
@@ -404,7 +582,7 @@ export default function ASHADashboard() {
                />
                <div className="text-center mt-2">
                  <span className="text-sm text-gray-600">
-                   {getCurrentData().prescriptionsScanned} prescriptions uploaded this week
+                   {loading ? 'Loading...' : `${householdData.prescriptionsScanned} prescriptions uploaded this week`}
                  </span>
                </div>
              </div>
@@ -433,15 +611,17 @@ export default function ASHADashboard() {
               </div>
               <BarChartComponent 
                 data={[
-                  { name: 'With Sickness', value: getCurrentData().householdsWithSickness, color: '#ef4444' },
-                  { name: 'Total Visited', value: getCurrentData().householdsVisited, color: '#3b82f6' }
+                  { name: 'With Sickness', value: householdData.householdsWithSickness, color: '#ef4444' },
+                  { name: 'Total Visited', value: householdData.householdsVisited, color: '#3b82f6' }
                 ]} 
                 dataKey="value" 
                 fill="#ef4444"
               />
               <div className="text-center mt-2">
                 <span className="text-sm text-gray-600">
-                  {((getCurrentData().householdsWithSickness / getCurrentData().householdsVisited) * 100).toFixed(1)}% of visited households
+                  {loading ? 'Loading...' : householdData.householdsVisited > 0 
+                    ? `${((householdData.householdsWithSickness / householdData.householdsVisited) * 100).toFixed(1)}% of visited households`
+                    : '0% of visited households'}
                 </span>
               </div>
             </div>
@@ -467,15 +647,17 @@ export default function ASHADashboard() {
               </div>
               <BarChartComponent 
                 data={[
-                  { name: 'Completed Course', value: getCurrentData().fullCourseCompleted, color: '#10b981' },
-                  { name: 'Total Individuals', value: getCurrentData().individualsDataCollected, color: '#3b82f6' }
+                  { name: 'Completed Course', value: householdData.fullCourseCompleted, color: '#10b981' },
+                  { name: 'Total Individuals', value: householdData.individualsDataCollected, color: '#3b82f6' }
                 ]} 
                 dataKey="value" 
                 fill="#10b981"
               />
               <div className="text-center mt-2">
                 <span className="text-sm text-gray-600">
-                  {((getCurrentData().fullCourseCompleted / getCurrentData().individualsDataCollected) * 100).toFixed(1)}% completion rate
+                  {loading ? 'Loading...' : householdData.individualsDataCollected > 0 
+                    ? `${((householdData.fullCourseCompleted / householdData.individualsDataCollected) * 100).toFixed(1)}% completion rate`
+                    : '0% completion rate'}
                 </span>
               </div>
             </div>
@@ -504,15 +686,17 @@ export default function ASHADashboard() {
               </div>
               <BarChartComponent 
                 data={[
-                  { name: 'From Pharmacy/Self', value: getCurrentData().antibioticsFromPharmacy, color: '#ef4444' },
-                  { name: 'Total Individuals', value: getCurrentData().individualsDataCollected, color: '#3b82f6' }
+                  { name: 'From Pharmacy/Self', value: householdData.antibioticsFromPharmacy, color: '#ef4444' },
+                  { name: 'Total Individuals', value: householdData.individualsDataCollected, color: '#3b82f6' }
                 ]} 
                 dataKey="value" 
                 fill="#ef4444"
               />
               <div className="text-center mt-2">
                 <span className="text-sm text-gray-600">
-                  {((getCurrentData().antibioticsFromPharmacy / getCurrentData().individualsDataCollected) * 100).toFixed(1)}% without prescription
+                  {loading ? 'Loading...' : householdData.individualsDataCollected > 0 
+                    ? `${((householdData.antibioticsFromPharmacy / householdData.individualsDataCollected) * 100).toFixed(1)}% without prescription`
+                    : '0% without prescription'}
                 </span>
               </div>
             </div>
@@ -538,15 +722,17 @@ export default function ASHADashboard() {
               </div>
               <BarChartComponent 
                 data={[
-                  { name: 'Want to Learn', value: getCurrentData().wantToLearnMore, color: '#10b981' },
-                  { name: 'Total Individuals', value: getCurrentData().individualsDataCollected, color: '#3b82f6' }
+                  { name: 'Want to Learn', value: householdData.wantToLearnMore, color: '#10b981' },
+                  { name: 'Total Individuals', value: householdData.individualsDataCollected, color: '#3b82f6' }
                 ]} 
                 dataKey="value" 
                 fill="#10b981"
               />
               <div className="text-center mt-2">
                 <span className="text-sm text-gray-600">
-                  {((getCurrentData().wantToLearnMore / getCurrentData().individualsDataCollected) * 100).toFixed(1)}% IEC opportunity
+                  {loading ? 'Loading...' : householdData.individualsDataCollected > 0 
+                    ? `${((householdData.wantToLearnMore / householdData.individualsDataCollected) * 100).toFixed(1)}% IEC opportunity`
+                    : '0% IEC opportunity'}
                 </span>
               </div>
             </div>
@@ -580,6 +766,22 @@ export default function ASHADashboard() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Logout Button */}
+        <div className="mb-8">
+          <div className="card">
+            <div className="flex flex-col items-center justify-center py-6">
+              <p className="text-gray-600 mb-4">Ready to end your session?</p>
+              <button
+                onClick={handleLogout}
+                className="flex items-center space-x-2 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+              >
+                <LogOut className="w-5 h-5" />
+                <span className="font-medium">Logout</span>
+              </button>
             </div>
           </div>
         </div>

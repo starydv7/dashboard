@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useRouter } from 'next/router'
 import { districtData } from '../data/districtData'
 import { healthcareData } from '../data/healthcareData'
 import { LineChartComponent, BarChartComponent, PieChartComponent } from '../components/Chart'
@@ -13,7 +14,7 @@ import {
   SeasonalHealthChart, 
   InfrastructureChart 
 } from '../components/HealthcareCharts'
-import { Calendar, Users, Home, Activity, Info, AlertTriangle, TrendingUp, TrendingDown, Shield, Heart, Building, MapPin, FileText, BarChart3, Search, Filter } from 'lucide-react'
+import { Calendar, Users, Home, Activity, Info, AlertTriangle, TrendingUp, TrendingDown, Shield, Heart, Building, MapPin, FileText, BarChart3, Search, Filter, LogOut } from 'lucide-react'
 import { DashboardHeader } from '../components/Navigation'
 
 export default function Dashboard() {
@@ -22,6 +23,17 @@ export default function Dashboard() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showDescription, setShowDescription] = useState(null)
   const [activeTab, setActiveTab] = useState('overview')
+  const router = useRouter()
+
+  const handleLogout = () => {
+    // Clear all stored data
+    localStorage.removeItem('userRole')
+    localStorage.removeItem('userData')
+    localStorage.removeItem('accessToken')
+    
+    // Redirect to login page
+    router.push('/login')
+  }
 
   const currentDistrictData = districtData.districts[selectedDistrict]
   const availableTaluks = currentDistrictData?.talukData || []
@@ -1110,6 +1122,22 @@ export default function Dashboard() {
                 <li>• Monthly stakeholder meetings</li>
                 <li>• Quarterly performance reviews</li>
               </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Logout Button */}
+        <div className="mb-8">
+          <div className="card">
+            <div className="flex flex-col items-center justify-center py-6">
+              <p className="text-gray-600 mb-4">Ready to end your session?</p>
+              <button
+                onClick={handleLogout}
+                className="flex items-center space-x-2 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+              >
+                <LogOut className="w-5 h-5" />
+                <span className="font-medium">Logout</span>
+              </button>
             </div>
           </div>
         </div>

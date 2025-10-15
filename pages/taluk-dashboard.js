@@ -14,7 +14,7 @@ import {
   SeasonalHealthChart, 
   InfrastructureChart 
 } from '../components/HealthcareCharts'
-import { Calendar, Users, Home, Activity, Info, Search, Filter, MapPin, Building, User, ChevronDown, ChevronRight } from 'lucide-react'
+import { Calendar, Users, Home, Activity, Info, Search, Filter, MapPin, Building, User, ChevronDown, ChevronRight, LogOut } from 'lucide-react'
 import { DashboardHeader } from '../components/Navigation'
 
 export default function TalukDashboard() {
@@ -26,6 +26,21 @@ export default function TalukDashboard() {
   const [expandedPHCs, setExpandedPHCs] = useState({})
   const [expandedASHAs, setExpandedASHAs] = useState({})
   const router = useRouter()
+
+  // Access control: Only PHC can access Taluk Dashboard
+  useEffect(() => {
+    const userRole = localStorage.getItem('userRole')
+    if (userRole && userRole.toUpperCase() !== 'PHC') {
+      alert('Access Denied: Only PHC users can access Taluk Dashboard')
+      if (userRole.toUpperCase() === 'ASHA') {
+        router.push('/asha-dashboard')
+      } else if (userRole.toUpperCase() === 'DLO') {
+        router.push('/district-dashboard')
+      } else {
+        router.push('/login')
+      }
+    }
+  }, [router])
 
   const talukData = selectedTaluk ? getTalukData(selectedTaluk) : null
   const allTaluks = getAllTaluks()
@@ -72,6 +87,16 @@ export default function TalukDashboard() {
       ...prev,
       [ashaId]: !prev[ashaId]
     }))
+  }
+
+  const handleLogout = () => {
+    // Clear all stored data
+    localStorage.removeItem('userRole')
+    localStorage.removeItem('userData')
+    localStorage.removeItem('accessToken')
+    
+    // Redirect to login page
+    router.push('/login')
   }
 
   const formatDate = (dateString) => {
@@ -916,8 +941,7 @@ export default function TalukDashboard() {
                       </span>
                     </div>
                   </div>
-                                 </div>
-               </div>
+                </div>
 
                {/* Symptoms Category for Taluk */}
                <div className="mb-8">
@@ -985,9 +1009,24 @@ export default function TalukDashboard() {
                    </div>
                  </div>
                </div>
-             </div>
-           </>
+          </>
         )}
+
+        {/* Logout Button */}
+        <div className="mb-8">
+          <div className="card">
+            <div className="flex flex-col items-center justify-center py-6">
+              <p className="text-gray-600 mb-4">Ready to end your session?</p>
+              <button
+                onClick={handleLogout}
+                className="flex items-center space-x-2 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+              >
+                <LogOut className="w-5 h-5" />
+                <span className="font-medium">Logout</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </main>
     </div>
   )
