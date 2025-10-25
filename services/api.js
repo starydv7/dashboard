@@ -1,6 +1,6 @@
 // API Configuration
-// Always use 192 local IP
-const API_BASE_URL = 'http://192.168.3.74:3000/api/v1'
+// Use public API
+const API_BASE_URL = 'http://103.25.231.28:3000/api/v1'
 // API Service Class
 class ApiService {
   constructor() {
