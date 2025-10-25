@@ -1,6 +1,13 @@
 // API Configuration
-// Use public API
-const API_BASE_URL = 'http://103.25.231.28:3000/api/v1'
+// Check if we're in development mode (localhost)
+const isDevelopment = typeof window !== 'undefined' && (
+  window.location.hostname === 'localhost' ||
+  window.location.hostname.includes('127.0.0.1')
+)
+
+const API_BASE_URL = isDevelopment 
+  ? 'http://192.168.3.74:3000/api/v1'  // Local development
+  : 'http://103.25.231.28:3000/api/v1'  // Production deployment
 // API Service Class
 class ApiService {
   constructor() {
