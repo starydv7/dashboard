@@ -83,12 +83,29 @@ export default function ASHADashboard() {
   }
 
   // Mock ASHA data
+  // Get user data from localStorage
+  const getUserData = () => {
+    if (typeof window !== 'undefined') {
+      const userDataString = localStorage.getItem('userData')
+      if (userDataString) {
+        try {
+          return JSON.parse(userDataString)
+        } catch (error) {
+          console.error('Error parsing user data:', error)
+        }
+      }
+    }
+    return null
+  }
+
+  const userData = getUserData()
+
   const ashaData = {
-    id: 'ASHA001',
-    name: 'Priya Sharma',
-    taluk: 'Dharwad',
-    phc: 'Dharwad PHC',
-    villages: ['Village A', 'Village B', 'Village C'],
+    id: userData?.id || 'ASHA001',
+    name: userData?.name || 'ASHA User',
+    taluk: userData?.taluk || 'Dharwad',
+    phc: userData?.phc || 'Dharwad PHC',
+    villages: userData?.villages || ['Village A', 'Village B', 'Village C'],
     totalHouseholds: 150,
     assignedHouseholds: 150,
     completedHouseholds: 142,
@@ -273,15 +290,21 @@ export default function ASHADashboard() {
       {/* ASHA Profile */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-              <User className="w-6 h-6 text-blue-600" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                <User className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Welcome, {ashaData.name}!</h2>
+                <p className="text-sm text-gray-600">
+                  {ashaData.taluk} • {ashaData.phc} • {ashaData.villages.length} Villages
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">{ashaData.name}</h2>
-              <p className="text-sm text-gray-600">
-                {ashaData.taluk} • {ashaData.phc} • {ashaData.villages.length} Villages
-              </p>
+            <div className="text-right">
+              <p className="text-sm text-gray-500">{currentDate}</p>
+              <p className="text-xs text-gray-400">ASHA Worker</p>
             </div>
           </div>
         </div>

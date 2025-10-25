@@ -8,7 +8,8 @@ import {
   BarChart3, 
   Menu,
   X,
-  Shield
+  Shield,
+  Pill
 } from 'lucide-react'
 
 export default function Navigation() {
@@ -45,6 +46,12 @@ export default function Navigation() {
       href: '/healthcare-charts',
       icon: BarChart3,
       description: 'Advanced healthcare analytics and charts'
+    },
+    {
+      name: '1mg',
+      href: '/1mg',
+      icon: Pill,
+      description: '1mg integration and medication management'
     }
   ]
 

@@ -1,6 +1,6 @@
 // API Configuration
+//const API_BASE_URL = 'http://103.25.231.28:3000/api/v1'
 const API_BASE_URL = 'http://192.168.3.74:3000/api/v1'
-
 // API Service Class
 class ApiService {
   constructor() {
@@ -229,6 +229,91 @@ class ApiService {
       console.error('❌ Error fetching ASHA dashboard data:', error)
       throw error
     }
+  }
+
+  // 1mg Dashboard API - Tata 1Mg
+  async getDashboardData(params) {
+    console.log('🧫 Fetching 1mg dashboard data with params:', params)
+    const queryParams = new URLSearchParams(params).toString()
+    
+    // Check viewMode and call appropriate endpoint
+    if (params.viewMode === 'yearly') {
+      return await this.apiCall(`/dashboard/yearly?${queryParams}`, 'GET')
+    } else {
+      return await this.apiCall(`/dashboard/monthly?${queryParams}`, 'GET')
+    }
+  }
+
+  // Get Districts
+  async getDistricts() {
+    return await this.apiCall('/dashboard/districts', 'GET')
+  }
+
+  // Get Test Names
+  async getTestNames() {
+    return await this.apiCall('/dashboard/test-names', 'GET')
+  }
+
+  // Get Organisms
+  async getOrganisms() {
+    return await this.apiCall('/dashboard/organisms', 'GET')
+  }
+
+  // Get Monthly Resistance Trends
+  async getMonthlyResistance(params) {
+    const queryParams = new URLSearchParams(params).toString()
+    return await this.apiCall(`/dashboard/monthly?${queryParams}`, 'GET')
+  }
+
+  // Get Yearly Resistance Trends
+  async getYearlyResistance(params) {
+    const queryParams = new URLSearchParams(params).toString()
+    return await this.apiCall(`/dashboard/yearly?${queryParams}`, 'GET')
+  }
+
+  // Get Filters
+  async getFilters() {
+    return await this.apiCall('/dashboard/filters', 'GET')
+  }
+
+  // Get Total Isolates
+  async getTotalIsolates(params = {}) {
+    const queryParams = new URLSearchParams(params).toString()
+    return await this.apiCall(`/dashboard/total?${queryParams}`, 'GET')
+  }
+
+  // Get Isolation by District
+  async getIsolationByDistrict(params) {
+    const queryParams = new URLSearchParams(params).toString()
+    return await this.apiCall(`/dashboard/isolation-district?${queryParams}`, 'GET')
+  }
+
+  // Get Isolation by Test
+  async getIsolationByTest(params) {
+    const queryParams = new URLSearchParams(params).toString()
+    return await this.apiCall(`/dashboard/test?${queryParams}`, 'GET')
+  }
+
+  // Get Monthly Isolation Trend
+  async getMonthlyIsolation(params) {
+    const queryParams = new URLSearchParams(params).toString()
+    return await this.apiCall(`/dashboard/monthly-isolation?${queryParams}`, 'GET')
+  }
+
+  // Get Yearly Isolation Trend
+  async getYearlyIsolation(params) {
+    const queryParams = new URLSearchParams(params).toString()
+    return await this.apiCall(`/dashboard/yearly-isolation?${queryParams}`, 'GET')
+  }
+
+  // Get Top 10 Organisms
+  async getTopOrganisms() {
+    return await this.apiCall('/dashboard/top-organisms-isolated', 'GET')
+  }
+
+  // Get Top 10 Districts
+  async getTopDistricts() {
+    return await this.apiCall('/dashboard/top-districts', 'GET')
   }
 }
 
